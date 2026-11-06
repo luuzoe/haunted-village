@@ -104,14 +104,14 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 <div id="toast"></div>
 <div id="banner"></div>
 <div id="vignette"></div>
-<div id="ver">သရဲရွာ V2</div>
+<div id="ver">သရဲရွာ V3</div>
 <div id="rotatePrompt"><div class="ph">📱🔄</div><div class="pt">ဖုန်းကို Landscape လှည့်ပါ</div><div class="ps">ဂိမ်းက Landscape နဲ့ ဆော့ရတာ အကောင်းဆုံးပါ<br>ဖုန်းကို ဘေးတိုက်လှည့်လိုက်ပါ</div></div>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const $=id=>document.getElementById(id);
-const V='V2';
+const V='V3';
 const MAP=400;
 const HALF=MAP/2;
 const S={started:false,paused:false,hide:false,run:false,hearts:3,clues:0,clueTotal:5,stamina:100,yaw:0,pitch:0,fpp:true,volume:0.8,muted:false,time:23*60,invuln:0,dead:false,won:false,found:{},playT:0};
@@ -405,6 +405,7 @@ function placeModel(gltf,def){
 }
 async function buildVillage(){
   setStage('🏠 ရွာအိမ်တွေ တင်နေသည်…');
+  await Promise.all([...new Set(VILLAGE.map(h=>h.f))].map(f=>trackLoad(f)));
   const cache={};
   for(const h of VILLAGE){
     if(!cache[h.f])cache[h.f]=await trackLoad(h.f);
@@ -412,6 +413,7 @@ async function buildVillage(){
     placeModel(cache[h.f].scene.clone(),def);
   }
   setStage('🌳 သစ်ပင်တွေ စိုက်နေသည်…');
+  await Promise.all(TREES.map(t=>trackLoad(t.f)));
   const treeCache={};
   for(const t of TREES){
     if(!treeCache[t.f])treeCache[t.f]=await trackLoad(t.f);
@@ -424,9 +426,8 @@ async function buildVillage(){
     }
   }
   setStage('⛰️ တောင်တွေ တင်နေသည်…');
-  const cave=await trackLoad('assets/village/mountain-cave.glb');
+  const [cave,green,well,fence]=await Promise.all([trackLoad('assets/village/mountain-cave.glb'),trackLoad('assets/village/mountain-green.glb'),trackLoad('assets/village/stone-well.glb'),trackLoad('assets/village/fence-pack.glb')]);
   placeModel(cave.scene,{s:60,x:-150,z:-150,ry:0.8,w:40,d:40});
-  const green=await trackLoad('assets/village/mountain-green.glb');
   const gm=green.scene;
   gm.scale.setScalar(0.05);
   gm.position.set(120,0,-190);
@@ -438,9 +439,7 @@ async function buildVillage(){
   green2.rotation.y=2.4;
   scene.add(green2);
   setStage('⛲ ရေတွင်းနဲ့ ခြံစည်း တင်နေသည်…');
-  const well=await trackLoad('assets/village/stone-well.glb');
   placeModel(well.scene,{s:0.006,x:0,z:-8,ry:0,w:2,d:2});
-  const fence=await trackLoad('assets/village/fence-pack.glb');
   for(let i=0;i<4;i++){
     const fx=-30+i*20;
     placeModel(fence.scene.clone(),{s:0.01,x:fx,z:70,ry:0,w:0.6,d:4});
@@ -507,7 +506,7 @@ function makeGhostEyes(grp){
 }
 async function loadGhosts(){
   setStage('👻 သရဲတွေ တင်နေသည်…');
-  const k=await trackLoad('assets/ghost-kuntilanak.glb');
+  const [k,sh]=await Promise.all([trackLoad('assets/ghost-kuntilanak.glb'),trackLoad('assets/ghost-shazia.glb')]);
   const kg=new THREE.Group();
   const ki=k.scene;
   ki.rotation.x=-Math.PI/2;
@@ -521,7 +520,6 @@ async function loadGhosts(){
   kg.position.set(-120,groundH(-120,-140),-140);
   scene.add(kg);
   ghosts.push({grp:kg,name:'Kuntilanak',home:[-120,-140],pos:new THREE.Vector3(-120,0,-140),speed:3.4,state:'wander',chaseT:0,wpT:0,wp:new THREE.Vector3(-120,0,-140),radius:60,scareCd:0});
-  const sh=await trackLoad('assets/ghost-shazia.glb');
   const sg=new THREE.Group();
   const si=sh.scene;
   si.scale.setScalar(2.0);
@@ -832,17 +830,15 @@ async function boot(){
   try{
     initScene();
     minimapCtx=$('minimap').getContext('2d');
-    loadRealSound('ambience','assets/sounds/night-ambience.wav');
-    loadRealSound('owl','assets/sounds/owl-hoot.wav');
-    loadRealSound('woodstep','assets/sounds/footsteps-grass.wav');
-    loadRealSound('dog','assets/sounds/dog-bark.flac');
-    loadRealSound('whisper','assets/sounds/whisper-female.wav');
-    loadRealSound('thunder','assets/sounds/thunder-distant.wav');
-    loadRealSound('drone','assets/sounds/drone-eerie.wav');
-    await buildVillage();
+    loadRealSound('ambience','assets/sounds/night-ambience.mp3');
+    loadRealSound('owl','assets/sounds/owl-hoot.mp3');
+    loadRealSound('woodstep','assets/sounds/footsteps-grass.mp3');
+    loadRealSound('dog','assets/sounds/dog-bark.mp3');
+    loadRealSound('whisper','assets/sounds/whisper-female.mp3');
+    loadRealSound('thunder','assets/sounds/thunder-distant.mp3');
+    loadRealSound('drone','assets/sounds/drone-eerie.mp3');
+    await Promise.all([buildVillage(),loadPlayer(),loadGhosts()]);
     buildClues();
-    await loadPlayer();
-    await loadGhosts();
     loadHandsAndFlash();
     bindControls();
     setStage('✅ အဆင်သင့်');
