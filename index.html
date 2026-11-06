@@ -104,14 +104,14 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 <div id="toast"></div>
 <div id="banner"></div>
 <div id="vignette"></div>
-<div id="ver">သရဲရွာ V3</div>
+<div id="ver">သရဲရွာ V4</div>
 <div id="rotatePrompt"><div class="ph">📱🔄</div><div class="pt">ဖုန်းကို Landscape လှည့်ပါ</div><div class="ps">ဂိမ်းက Landscape နဲ့ ဆော့ရတာ အကောင်းဆုံးပါ<br>ဖုန်းကို ဘေးတိုက်လှည့်လိုက်ပါ</div></div>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const $=id=>document.getElementById(id);
-const V='V3';
+const V='V4';
 const MAP=400;
 const HALF=MAP/2;
 const S={started:false,paused:false,hide:false,run:false,hearts:3,clues:0,clueTotal:5,stamina:100,yaw:0,pitch:0,fpp:true,volume:0.8,muted:false,time:23*60,invuln:0,dead:false,won:false,found:{},playT:0};
@@ -392,8 +392,7 @@ const TREES=[
   {f:'assets/village/tree-models.glb',s:0.6,n:18}
 ];
 function addCollider(x,z,w,d){walls.push({x,z,w,d})}
-function placeModel(gltf,def){
-  const g=gltf.scene;
+function placeModel(g,def){
   g.scale.setScalar(def.s);
   g.position.set(def.x,groundH(def.x,def.z)+(def.yo||0),def.z);
   g.rotation.y=def.ry||0;
