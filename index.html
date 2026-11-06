@@ -104,14 +104,15 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 <div id="toast"></div>
 <div id="banner"></div>
 <div id="vignette"></div>
-<div id="ver">သရဲရွာ V4</div>
+<div id="ver">သရဲရွာ V5</div>
 <div id="rotatePrompt"><div class="ph">📱🔄</div><div class="pt">ဖုန်းကို Landscape လှည့်ပါ</div><div class="ps">ဂိမ်းက Landscape နဲ့ ဆော့ရတာ အကောင်းဆုံးပါ<br>ဖုန်းကို ဘေးတိုက်လှည့်လိုက်ပါ</div></div>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {FBXLoader} from 'three/addons/loaders/FBXLoader.js';
 const $=id=>document.getElementById(id);
-const V='V4';
+const V='V5';
 const MAP=400;
 const HALF=MAP/2;
 const S={started:false,paused:false,hide:false,run:false,hearts:3,clues:0,clueTotal:5,stamina:100,yaw:0,pitch:0,fpp:true,volume:0.8,muted:false,time:23*60,invuln:0,dead:false,won:false,found:{},playT:0};
@@ -246,7 +247,7 @@ function startAmbient(){
 }
 const loader=new GLTFLoader();
 const LOAD_TOTAL={bytes:0,done:0};
-const LOAD_SIZES={'assets/xander.glb':2599280,'assets/ghost-kuntilanak.glb':15414412,'assets/ghost-shazia.glb':2655560,'assets/village/house-east-asian.glb':10060052,'assets/village/house-sundanese.glb':6807548,'assets/village/house-minka.glb':11016112,'assets/village/house-hut.glb':3409956,'assets/village/house-old.glb':8788324,'assets/village/tree-realistic.glb':6831012,'assets/village/tree-palm.glb':5824168,'assets/village/tree-models.glb':5688452,'assets/village/stone-well.glb':12913684,'assets/village/fence-pack.glb':2951824,'assets/village/mountain-cave.glb':11296080,'assets/village/mountain-green.glb':4080924,'assets/hand-woman.glb':13015000,'assets/flashlight-real.glb':10916480};
+const LOAD_SIZES={'assets/xander.glb':2599280,'assets/ghost-kuntilanak.glb':15414412,'assets/ghost-shazia.glb':2655560,'assets/village/house-east-asian.glb':10060052,'assets/village/house-sundanese.glb':6807548,'assets/village/house-minka.glb':11016112,'assets/village/house-hut.glb':3409956,'assets/village/house-old.glb':8788324,'assets/village/tree-realistic.glb':6831012,'assets/village/tree-palm.glb':5824168,'assets/village/tree-models.glb':5688452,'assets/village/stone-well.glb':12913684,'assets/village/fence-pack.glb':2951824,'assets/village/mountain-cave.glb':11296080,'assets/village/mountain-green.glb':4080924,'assets/hand-woman.glb':13015000,'assets/flashlight-real.glb':10916480,'assets/anims/idle.fbx':1799520,'assets/anims/walk.fbx':1377264,'assets/anims/run.fbx':1351344,'assets/anims/crouch.fbx':1527280};
 let loadTotalBytes=0;
 for(const k in LOAD_SIZES)loadTotalBytes+=LOAD_SIZES[k];
 function updLoadBar(){
@@ -266,6 +267,34 @@ function trackLoad(url){
     loader.load(url,(g)=>{LOAD_TOTAL.done+=sz;updLoadBar();res(g)},undefined,(e)=>{rej(e)});
   });
   return loadCache[url];
+}
+const fbxLoader=new FBXLoader();
+function trackFBX(url){
+  if(loadCache[url])return loadCache[url];
+  const sz=LOAD_SIZES[url]||0;
+  loadCache[url]=new Promise((res,rej)=>{
+    fbxLoader.load(url,(g)=>{LOAD_TOTAL.done+=sz;updLoadBar();res(g)},undefined,(e)=>{rej(e)});
+  });
+  return loadCache[url];
+}
+const anims={};
+let curAnim=null,curAct=null;
+async function loadAnims(){
+  setStage('🏃 လှုပ်ရှားမှု တင်နေသည်…');
+  const defs={idle:'assets/anims/idle.fbx',walk:'assets/anims/walk.fbx',run:'assets/anims/run.fbx',crouch:'assets/anims/crouch.fbx'};
+  for(const k in defs){
+    const fbx=await trackFBX(defs[k]);
+    const clip=fbx.animations[0];
+    clip.tracks.forEach(t=>{const p=t.name.split('.');p[0]=p[0].replace(/^mixamorig:/,'');t.name=p.join('.')});
+    anims[k]=clip;
+  }
+}
+function playAnim(name){
+  if(!playerMixer||!anims[name]||curAnim===name)return;
+  const act=playerMixer.clipAction(anims[name]);
+  act.reset().fadeIn(0.25).play();
+  if(curAct)curAct.fadeOut(0.25);
+  curAct=act;curAnim=name;
 }
 function makeGroundTexture(){
   const c=document.createElement('canvas');c.width=512;c.height=512;
@@ -472,7 +501,7 @@ async function loadPlayer(){
   playerMesh.scale.setScalar(1.0);
   playerMesh.traverse(o=>{if(o.isMesh){o.castShadow=true}});
   scene.add(playerMesh);
-  if(g.animations&&g.animations.length)playerMixer=new THREE.AnimationMixer(playerMesh);
+  playerMixer=new THREE.AnimationMixer(playerMesh);
 }
 async function loadHandsAndFlash(){
   try{
@@ -726,6 +755,9 @@ function gameLoop(){
     playerMesh.rotation.y=S.yaw+Math.PI;
     playerMesh.visible=!S.fpp;
   }
+  const moving=Math.hypot(playerVel.x,playerVel.z)>0.4;
+  playAnim(S.hide?'crouch':moving?(S.run&&S.stamina>0?'run':'walk'):'idle');
+  if(playerMixer)playerMixer.update(dt);
   if(S.fpp){
     camera.position.set(playerPos.x+fx*0.2,playerPos.y+1.65,playerPos.z+fz*0.2);
     camera.lookAt(playerPos.x+fx*10,playerPos.y+1.55,playerPos.z+fz*10);
@@ -836,7 +868,7 @@ async function boot(){
     loadRealSound('whisper','assets/sounds/whisper-female.mp3');
     loadRealSound('thunder','assets/sounds/thunder-distant.mp3');
     loadRealSound('drone','assets/sounds/drone-eerie.mp3');
-    await Promise.all([buildVillage(),loadPlayer(),loadGhosts()]);
+    await Promise.all([buildVillage(),loadPlayer(),loadGhosts(),loadAnims()]);
     buildClues();
     loadHandsAndFlash();
     bindControls();
