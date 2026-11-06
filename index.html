@@ -104,7 +104,7 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 <div id="toast"></div>
 <div id="banner"></div>
 <div id="vignette"></div>
-<div id="ver">သရဲရွာ V6</div>
+<div id="ver">သရဲရွာ V7</div>
 <div id="rotatePrompt"><div class="ph">📱🔄</div><div class="pt">ဖုန်းကို Landscape လှည့်ပါ</div><div class="ps">ဂိမ်းက Landscape နဲ့ ဆော့ရတာ အကောင်းဆုံးပါ<br>ဖုန်းကို ဘေးတိုက်လှည့်လိုက်ပါ</div></div>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
@@ -112,7 +112,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {FBXLoader} from 'three/addons/loaders/FBXLoader.js';
 const $=id=>document.getElementById(id);
-const V='V6';
+const V='V7';
 const MAP=400;
 const HALF=MAP/2;
 const S={started:false,paused:false,hide:false,run:false,hearts:3,clues:0,clueTotal:5,stamina:100,yaw:0,pitch:0,fpp:true,volume:0.8,muted:false,time:23*60,invuln:0,dead:false,won:false,found:{},playT:0};
@@ -286,7 +286,7 @@ async function loadAnims(){
   for(const k in defs){
     const fbx=await trackFBX(defs[k]);
     const clip=fbx.animations[0];
-    clip.tracks.forEach(t=>{const p=t.name.split('.');p[0]=p[0].replace(/^mixamorig:/,'');t.name=p.join('.')});
+    clip.tracks.forEach(t=>{const p=t.name.split('.');p[0]=p[0].replace(/^mixamorig:?/,'');t.name=p.join('.')});
     anims[k]=clip;
   }
 }
@@ -451,7 +451,7 @@ function placeModel(g,def){
   g.rotation.y=def.ry||0;
   g.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});
   scene.add(g);
-  const w=(def.w||10)*def.s,d=(def.d||10)*def.s;
+  const w=(def.w||10),d=(def.d||10);
   addCollider(def.x,def.z,w,d);
   return g;
 }
@@ -461,7 +461,8 @@ async function buildVillage(){
   const cache={};
   for(const h of VILLAGE){
     if(!cache[h.f])cache[h.f]=await trackLoad(h.f);
-    const def={s:h.s,x:h.x,z:h.z,ry:h.ry,yo:h.yo||0,w:9,d:9};
+    const hb={'house-sundanese.glb':[12,10],'house-east-asian.glb':[9,9],'house-minka.glb':[10,16],'house-hut.glb':[4.5,4.5],'house-old.glb':[9,9]}[h.f.split('/').pop()]||[9,9];
+    const def={s:h.s,x:h.x,z:h.z,ry:h.ry,yo:h.yo||0,w:hb[0],d:hb[1]};
     placeModel(cache[h.f].scene.clone(),def);
   }
   setStage('🌳 သစ်ပင်တွေ စိုက်နေသည်…');
@@ -472,7 +473,7 @@ async function buildVillage(){
     for(let i=0;i<t.n;i++){
       let x,z,tries=0;
       do{x=rand(-185,185);z=rand(-185,185);tries++}
-      while(tries<20&&(Math.abs(x)<18&&Math.abs(z)<18||dist2d(x,z,-178,0)<24));
+      while(tries<20&&(Math.abs(x)<18&&Math.abs(z)<18||dist2d(x,z,-178,0)<24||dist2d(x,z,0,150)<12));
       const def={s:t.s*rand(0.85,1.25),x,z,ry:rand(0,Math.PI*2),w:1.2,d:1.2};
       placeModel(treeCache[t.f].scene.clone(),def);
     }
