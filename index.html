@@ -51,7 +51,11 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 #tutorial .card{background:#120000;border:2px solid #7a0000;border-radius:14px;max-width:520px;max-height:86vh;overflow-y:auto;padding:18px;color:#eee}
 #tutorial h2{margin:0 0 8px;color:#ff3333;font-size:20px}
 #tutorial li{font-size:14px;line-height:1.7;margin-bottom:6px}
-@media (orientation:landscape){.screen h1{font-size:30px}.screen p{font-size:13px}.btn{padding:10px 22px}#loadBarWrap{bottom:10px}#minimap{width:92px;height:92px}}
+@media (orientation:landscape){.screen h1{font-size:30px}.screen p{font-size:13px}.btn{padding:10px 22px}#loadBarWrap{bottom:10px}#minimap{width:92px;height:92px}#joy{width:104px;height:104px;bottom:14px;left:12px}#joyKnob{left:27px;top:27px;width:50px;height:50px}.abtn{width:56px;height:56px;font-size:12px}#actions{bottom:14px;right:10px;gap:8px}#stam{bottom:128px;left:12px;width:104px}#stamLbl{bottom:140px;left:12px}#pauseBtn{top:108px}}
+#rotatePrompt{position:absolute;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(0,0,0,.92);color:#eee;text-align:center;padding:20px}
+#rotatePrompt .ph{font-size:56px}
+#rotatePrompt .pt{font-size:22px;font-weight:900;color:#ff3333}
+#rotatePrompt .ps{font-size:14px;color:#bbb;line-height:1.7}
 </style>
 </head>
 <body>
@@ -100,13 +104,14 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 <div id="toast"></div>
 <div id="banner"></div>
 <div id="vignette"></div>
-<div id="ver">သရဲရွာ V1</div>
+<div id="ver">သရဲရွာ V2</div>
+<div id="rotatePrompt"><div class="ph">📱🔄</div><div class="pt">ဖုန်းကို Landscape လှည့်ပါ</div><div class="ps">ဂိမ်းက Landscape နဲ့ ဆော့ရတာ အကောင်းဆုံးပါ<br>ဖုန်းကို ဘေးတိုက်လှည့်လိုက်ပါ</div></div>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 const $=id=>document.getElementById(id);
-const V='V1';
+const V='V2';
 const MAP=400;
 const HALF=MAP/2;
 const S={started:false,paused:false,hide:false,run:false,hearts:3,clues:0,clueTotal:5,stamina:100,yaw:0,pitch:0,fpp:true,volume:0.8,muted:false,time:23*60,invuln:0,dead:false,won:false,found:{},playT:0};
@@ -137,6 +142,20 @@ function setHearts(){$('hearts').textContent='❤️'.repeat(Math.max(0,S.hearts
 function setClues(){$('keys').textContent='📜 သဲလွန်စ '+S.clues+'/'+S.clueTotal}
 function fmtTime(){const h=Math.floor(S.time/60)%24;const m=Math.floor(S.time%60);return '🌙 ည '+(h>12?(h-12):h)+' နာရီ '+String(m).padStart(2,'0')+' မိနစ်'}
 function setFloorInfo(){$('floorInfo').textContent=fmtTime()}
+function checkRotate(){
+  const portrait=innerHeight>innerWidth;
+  const rp=$('rotatePrompt');
+  if(!rp)return;
+  rp.style.display=(portrait&&S.started)?'flex':'none';
+}
+function tryLandscape(){
+  try{
+    if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});
+  }catch(e){}
+  try{
+    if(screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{});
+  }catch(e){}
+}
 function groundH(x,z){
   const a=Math.sin(x*0.021)*Math.cos(z*0.017)*2.2;
   const b=Math.sin(x*0.052+1.7)*Math.cos(z*0.043+0.6)*0.7;
@@ -846,6 +865,8 @@ async function boot(){
 }
 $('startBtn').addEventListener('click',()=>{
   ac();
+  tryLandscape();
+  checkRotate();
   const save=localStorage.getItem('hv_save');
   const cont=$('continueBtn').style.display!=='none'&&$('startBtn').textContent.includes('ဆက်');
   if(!cont){
@@ -881,6 +902,7 @@ $('continueBtn').addEventListener('click',()=>{$('startBtn').textContent='▶ �
 $('howBtn').addEventListener('click',()=>{$('tutorial').style.display='flex'});
 $('tutClose').addEventListener('click',()=>{$('tutorial').style.display='none';localStorage.setItem('hv_tut','1')});
 addEventListener('resize',()=>{
+  checkRotate();
   if(!camera||!renderer)return;
   camera.aspect=innerWidth/innerHeight;
   camera.updateProjectionMatrix();
