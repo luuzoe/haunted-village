@@ -47,6 +47,10 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 #stamLbl{position:absolute;left:16px;bottom:170px;font-size:11px;font-weight:800;color:#ff9999;text-shadow:0 1px 2px #000}
 #pauseBtn{position:absolute;top:126px;right:8px;pointer-events:auto;z-index:22}
 #ver{position:absolute;bottom:4px;right:6px;font-size:10px;color:#666;z-index:21}
+#storyCard{position:absolute;inset:0;z-index:40;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.72);padding:20px}
+#storyCard .scard{background:#160a06;border:2px solid #8a6d2f;border-radius:14px;max-width:480px;padding:20px;color:#f0e0c0}
+#storyCard h3{margin:0 0 10px;color:#ffd700;font-size:18px}
+#storyCard p{font-size:15px;line-height:1.9;margin:0 0 14px}
 #tutorial{position:absolute;inset:0;z-index:35;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.82);padding:16px}
 #tutorial .card{background:#120000;border:2px solid #7a0000;border-radius:14px;max-width:520px;max-height:86vh;overflow-y:auto;padding:18px;color:#eee}
 #tutorial h2{margin:0 0 8px;color:#ff3333;font-size:20px}
@@ -69,7 +73,7 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 <div class="screen" id="menu" style="display:none">
 <h1>သရဲရွာ</h1>
 <div class="sub">HAUNTED VILLAGE — ညအချိန် မြန်မာရွာ</div>
-<p>ရွာမှာ လူတစ်ယောက် ပျောက်နေတယ်။ သဲလွန်စ ၅ ခု ရှာပြီး ရွာရဲ့ ကျိန်စာကို ဖြေရမယ်။ သရဲတွေ လိုက်ရင် ပြေး — ပုန်းရင် ရပ်နေရမယ်။ အရုဏ်တက်ခါနီး လွတ်မြောက်ရမယ်။</p>
+<p>လွန်ခဲ့တဲ့ ၁၀ နှစ်က လပြည့်ညမှာ လမင်းရွာက မိန်းကလေး မမေသူ စေတီနားမှာ ပျောက်သွားတယ်။ အဲဒီညထဲက ရွာတစ်ခုလုံး ကျိန်စာမိပြီး ညနက်တိုင်း သရဲတွေ ထွက်လာတယ်။ မင်းက မမေသူရဲ့ အကို Xander — သဲလွန်စ ၅ ခု ရှာပြီး ကျိန်စာကို ဖြေရမယ်။ သရဲတွေ လိုက်ရင် ပြေး — ပုန်းရင် ရပ်နေရမယ်။</p>
 <button class="btn" id="startBtn">▶ စဆော့မယ်</button>
 <button class="btn ghost" id="continueBtn" style="display:none">↻ ဆက်ဆော့မယ်</button>
 <button class="btn ghost" id="howBtn">📖 ဘယ်လိုဆော့မလဲ</button>
@@ -104,7 +108,8 @@ canvas.game{position:absolute;inset:0;width:100%;height:100%;display:block}
 <div id="toast"></div>
 <div id="banner"></div>
 <div id="vignette"></div>
-<div id="ver">သရဲရွာ V7</div>
+<div id="ver">သရဲရွာ V8</div>
+<div id="storyCard"><div class="scard"><h3 id="storyTitle"></h3><p id="storyText"></p><button class="btn" id="storyClose">ဆက်သွားမယ်</button></div></div>
 <div id="rotatePrompt"><div class="ph">📱🔄</div><div class="pt">ဖုန်းကို Landscape လှည့်ပါ</div><div class="ps">ဂိမ်းက Landscape နဲ့ ဆော့ရတာ အကောင်းဆုံးပါ<br>ဖုန်းကို ဘေးတိုက်လှည့်လိုက်ပါ</div></div>
 <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <script type="module">
@@ -112,7 +117,7 @@ import * as THREE from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {FBXLoader} from 'three/addons/loaders/FBXLoader.js';
 const $=id=>document.getElementById(id);
-const V='V7';
+const V='V8';
 const MAP=400;
 const HALF=MAP/2;
 const S={started:false,paused:false,hide:false,run:false,hearts:3,clues:0,clueTotal:5,stamina:100,yaw:0,pitch:0,fpp:true,volume:0.8,muted:false,time:23*60,invuln:0,dead:false,won:false,found:{},playT:0};
@@ -125,6 +130,7 @@ let monster=null;
 let scene,camera,renderer,clock;
 let playerMesh=null,playerMixer=null,handR=null,handL=null,flashLight=null,flashMeshGroup=null;
 let moonLight,hemiLight,moonMesh;
+let fireflies=null,fireBase=[];
 let compassEl=null;
 let joyVec={x:0,y:0,mag:0},joyActive=false;
 let dragLook=false,lastPX=0,lastPY=0;
@@ -139,6 +145,8 @@ function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function rand(a,b){return a+Math.random()*(b-a)}
 function dist2d(ax,az,bx,bz){const dx=ax-bx,dz=az-bz;return Math.hypot(dx,dz)}
 function toast(msg,ms){const t=$('toast');t.textContent=msg;t.style.display='block';clearTimeout(t._h);t._h=setTimeout(()=>{t.style.display='none'},ms||2600)}
+function showStory(d){$('storyTitle').textContent='📜 '+d.name;$('storyText').textContent=d.story;$('storyCard').style.display='flex'}
+$('storyClose').addEventListener('click',()=>{$('storyCard').style.display='none'});
 function banner(msg,ms){const b=$('banner');b.textContent=msg;b.style.display='block';clearTimeout(b._h);b._h=setTimeout(()=>{b.style.display='none'},ms||2200)}
 function setHearts(){$('hearts').textContent='❤️'.repeat(Math.max(0,S.hearts))+'🖤'.repeat(Math.max(0,3-S.hearts))}
 function setClues(){$('keys').textContent='📜 သဲလွန်စ '+S.clues+'/'+S.clueTotal}
@@ -353,6 +361,15 @@ function initScene(){
   moonMesh.position.set(160,210,-260);
   moonMesh.lookAt(0,0,0);
   scene.add(moonMesh);
+  const glowC=document.createElement('canvas');glowC.width=glowC.height=128;const gx=glowC.getContext('2d');const grd=gx.createRadialGradient(64,64,4,64,64,64);grd.addColorStop(0,'rgba(220,230,255,0.55)');grd.addColorStop(1,'rgba(220,230,255,0)');gx.fillStyle=grd;gx.fillRect(0,0,128,128);
+  const moonGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(glowC),transparent:true,depthWrite:false,fog:false}));
+  moonGlow.scale.set(90,90,1);moonGlow.position.copy(moonMesh.position);scene.add(moonGlow);
+  const fireGeo=new THREE.BufferGeometry();
+  const firePos=new Float32Array(120*3);
+  for(let i=0;i<120;i++){const x=rand(-150,150),z=rand(-150,150),y=rand(1,3.5);firePos.set([x,y,z],i*3);fireBase.push([x,y,z,rand(0,Math.PI*2)])}
+  fireGeo.setAttribute('position',new THREE.BufferAttribute(firePos,3));
+  fireflies=new THREE.Points(fireGeo,new THREE.PointsMaterial({color:0xaaff66,size:0.18,transparent:true,opacity:0.85}));
+  scene.add(fireflies);
   const starGeo=new THREE.BufferGeometry();
   const starPos=[];
   for(let i=0;i<700;i++){
@@ -455,6 +472,19 @@ function placeModel(g,def){
   addCollider(def.x,def.z,w,d);
   return g;
 }
+const winGeo=new THREE.PlaneGeometry(0.9,1.1);
+const winMat=new THREE.MeshBasicMaterial({color:0xffb84d});
+function addWindows(def){
+  const gy=groundH(def.x,def.z)+(def.yo||0);
+  for(const s of [-1,1]){
+    const w=new THREE.Mesh(winGeo,winMat);
+    const fx=Math.sin(def.ry||0),fz=Math.cos(def.ry||0);
+    const rx=Math.sin((def.ry||0)+Math.PI/2),rz=Math.cos((def.ry||0)+Math.PI/2);
+    w.position.set(def.x+fx*(def.d/2+0.15)+rx*s*1.6,gy+2.1,def.z+fz*(def.d/2+0.15)+rz*s*1.6);
+    w.rotation.y=def.ry||0;
+    scene.add(w);
+  }
+}
 async function buildVillage(){
   setStage('🏠 ရွာအိမ်တွေ တင်နေသည်…');
   await Promise.all([...new Set(VILLAGE.map(h=>h.f))].map(f=>trackLoad(f)));
@@ -464,6 +494,7 @@ async function buildVillage(){
     const hb={'house-sundanese.glb':[12,10],'house-east-asian.glb':[9,9],'house-minka.glb':[10,16],'house-hut.glb':[4.5,4.5],'house-old.glb':[9,9]}[h.f.split('/').pop()]||[9,9];
     const def={s:h.s,x:h.x,z:h.z,ry:h.ry,yo:h.yo||0,w:hb[0],d:hb[1]};
     placeModel(cache[h.f].scene.clone(),def);
+    addWindows(def);
   }
   setStage('🌳 သစ်ပင်တွေ စိုက်နေသည်…');
   await Promise.all(TREES.map(t=>trackLoad(t.f)));
@@ -505,11 +536,11 @@ async function buildVillage(){
   placeModel(cache['assets/village/house-east-asian.glb'].scene.clone(),{s:1.4,x:0,z:-120,ry:0,w:12,d:12});
 }
 const CLUE_DEFS=[
-  {id:0,name:'ဒိုင်ယာရီ စာမျက်နှာ',x:-52,z:-33},
-  {id:1,name:'အမွေ လက်ဖွဲ့',x:78,z:-18},
-  {id:2,name:'ဓာတ်ပုံ အဟောင်း',x:62,z:-38},
-  {id:3,name:'မီးအိမ်',x:-88,z:-63},
-  {id:4,name:'ရွာသော့',x:67,z:-83}
+  {id:0,name:'ဒိုင်ယာရီ စာမျက်နှာ',x:-52,z:-33,story:'မမေသူရဲ့ နောက်ဆုံး စာမျက်နှာ — \'ဒီည လပြည့်ညမှာ စေတီနားက တစ်ခုခု ငါ့ကို ခေါ်နေတယ်... ငါ သွားကြည့်မယ်။ ငါ ပြန်မလာခဲ့ရင် အကိုရေ... ငါ့ကို ရှာပါ။\''},
+  {id:1,name:'အမွေ လက်ဖွဲ့',x:78,z:-18,story:'အဖွားရဲ့ လက်ဖွဲ့ — \'ဒီလက်ဖွဲ့ကို ဝတ်ထားရင် သရဲ မကပ်ဘူး\' လို့ အဖွားပြောခဲ့တယ်။ မမေသူက ဒါကို ဘာလို့ ဒီမှာ ထားခဲ့တာလဲ?'},
+  {id:2,name:'ဓာတ်ပုံ အဟောင်း',x:62,z:-38,story:'လွန်ခဲ့တဲ့ ၁၀ နှစ်က ဓာတ်ပုံ — မမေသူနောက်မှာ အနီဝတ်ထားတဲ့ မိန်းမတစ်ယောက် ရပ်နေတယ်။ သူ့မျက်နှာ... မရှိဘူး။'},
+  {id:3,name:'မီးအိမ်',x:-88,z:-63,story:'မမေသူရဲ့ မီးအိမ် — ၁၀ နှစ် ကြာပြီးတာတောင် ခုထိ နွေးနေတယ်။ သူ ဒီရွာမှာ ခုထိ ရှိနေတုန်းပဲ...'},
+  {id:4,name:'ရွာသော့',x:67,z:-83,story:'စေတီရဲ့ ရှေးဟောင်း သော့ — ဒီသော့နဲ့မှ ကျိန်စာကို ဖြေနိုင်မယ်။ စေတီနားမှာ သူ စောင့်နေတယ်...'}
 ];
 function buildClues(){
   for(const c of CLUE_DEFS){
@@ -519,7 +550,7 @@ function buildClues(){
     ring.rotation.x=Math.PI/2;
     grp.add(gem);grp.add(ring);
     grp.position.set(c.x,groundH(c.x,c.z)+1.4,c.z);
-    grp.userData={clueId:c.id,name:c.name,baseY:grp.position.y};
+    grp.userData={clueId:c.id,name:c.name,story:c.story,baseY:grp.position.y};
     scene.add(grp);
     clues.push(grp);
   }
@@ -679,6 +710,7 @@ function interact(){
     nc.clue.visible=false;
     playTone(880,0.3,0.3,'sine');
     toast('📜 ရပြီ: '+nc.clue.userData.name+' ('+S.clues+'/'+S.clueTotal+')');
+    showStory(nc.clue.userData);
     if(S.clues>=S.clueTotal){
       $('objective').textContent='🛕 စေတီမှာ ကျိန်စာဖြေပါ';
       banner('🛕 စေတီသို့ သွားပါ!',2500);
@@ -822,6 +854,7 @@ function gameLoop(){
   updateGhosts(dt);
   updateCompass();
   updateMinimap();
+  if(fireflies){const p=fireflies.geometry.attributes.position;for(let i=0;i<120;i++){const b=fireBase[i];p.array[i*3]=b[0]+Math.sin(S.playT*0.5+b[3])*1.5;p.array[i*3+1]=b[1]+Math.sin(S.playT*0.8+b[3]*2)*0.5;p.array[i*3+2]=b[2]+Math.cos(S.playT*0.4+b[3])*1.5}p.needsUpdate=true}
   if(Math.random()<dt*0.02)owlSound();
   if(Math.random()<dt*0.025)dogSound();
   if(Math.random()<dt*0.004)thunderSound();
